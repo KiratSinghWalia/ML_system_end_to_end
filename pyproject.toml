@@ -1,0 +1,12 @@
+[project]
+name = "end-to-end"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "metaflow>=2.19.16",
+    "mlflow>=3.8.1",
+    "numpy>=2.4.1",
+    "scikit-learn>=1.8.0",
+]
