@@ -39,12 +39,14 @@ def dataset(step_name,flow,inputs=None,attr=None):
         #shuffle the data 
         seed=int(time.time()*1000) if current.is_production else 42 #using curent from metaflow to check if we are in production and set seed accordingly
         generator=np.random.default_rng(seed)
-        data=data.sample(frac=1,random_state=generator)#using pandas sample to shuffle the data
+        data=data.sample(frac=1,random_state=generator)#using pandas sample to shuffle the data and return entire data set with frac=1 and random_state for reproducibility
         #using logger from metaflow to log info
         flow.logger.info("Loaded data with %d samples",len(data))
         flow.data=data
         yield
 
+    # basically this flow will used on each step and will check if dataset exists if not it will set data to None else it will load the data and do some basic preprocessing and shuffling and then set the data in flow for next steps to use.
+    
 @user_step_decorator
 def logging(step_name,flow,inputs=None,attr=None):
         

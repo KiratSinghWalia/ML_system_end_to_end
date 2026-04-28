@@ -1,10 +1,11 @@
 import os
+import sys
 from pathlib import Path
 
 from metaflow import Parameter,card,current,step,environment
 
 
-from src.common.pipeline import Pipeline, dataset
+from common.pipeline import Pipeline, dataset
 
 environment_variables = {
     "KERAS_BACKEND": os.getenv("KERAS_BACKEND", "tensorflow"),
@@ -19,14 +20,17 @@ def build_features_transformer():
     from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-    numeric_transformer = make_pipeline(SimpleImputer(strategy="median"), StandardScaler())
+    numeric_transformer = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(),)
     categorical_transformer = make_pipeline(
-        SimpleImputer(strategy="most_frequent"), OneHotEncoder(handle_unknown="ignore")
+        SimpleImputer(strategy="most_frequent"), OneHotEncoder(handle_unknown="ignore"),
     )
 
     return ColumnTransformer(
-        transformers=[("numeric", numeric_transformer, make_column_selector(dtype_include="object")),
-                        ("categorical", categorical_transformer, ["island","sex"])])
+        transformers=[
+            ("numeric", numeric_transformer, make_column_selector(dtype_exclude="object"))
+            ,
+            ("categorical", categorical_transformer, ["island","sex"]),
+            ],)
 
 
 def build_target_transformer():
@@ -41,7 +45,7 @@ def build_target_transformer():
 
 def build_model(input_shape,learning_rate=0.01):
     from keras import Input, layers, models, optimizers
-
+    
     model=models.Sequential(
         [
             Input(shape=(input_shape,)),
@@ -91,10 +95,10 @@ class Training(Pipeline):
 
         import mlflow
 
-        self.logging.info("MLflow Tracking URI: %s", mlflow.get_tracking_uri())
+        self.logger.info("MLflow Tracking URI: %s", mlflow.get_tracking_uri())
         self.mode ="production" if current.is_production else "development"
 
-        self.logging.info("Pipeline started in %s mode.", self.mode)
+        self.logger.info("Pipeline started in %s mode.", self.mode)
 
         try:
 
@@ -107,7 +111,7 @@ class Training(Pipeline):
             message= f"Failed to start MLflow run: {self.mlflow_run_id}"
             raise RuntimeError(message) from e
         
-        self.next(self.cross_validation,self.transform)
+        self.next(self.cross_validation, self.transform)
 
     @card
     @step
@@ -155,11 +159,13 @@ class Training(Pipeline):
         #giving logging info for the respective fold being trained now we will
         #configure a nested mlflow run for each fold under a parent run 
 
-        with (mlflow.start_run(run_id=self.mlflow_run_id),
-              mlflow.start_run(
-                  run_name=f"cross val fold {self.fold}",nested=True) as run ,):
+        with (
+            mlflow.start_run(run_id=self.mlflow_run_id),
+            mlflow.start_run(
+                  run_name=f"cross val fold {self.fold}",nested=True,) as run ,
+        ):
             
-            self.mlflow_run_id=run.info.run_id # update mlflow run id to current fold run id
+            self.mlflow_fold_run_id=run.info.run_id # update mlflow run id to current fold run id
             #first it was the parent run id now it is the fold run id .
 
             mlflow.autolog(log_models=False)
@@ -174,7 +180,7 @@ class Training(Pipeline):
                 verbose=0,
             )
 
-        self.logging.info(
+        self.logger.info(
             "Fold %d - training loss: %.4f , training accuracy: %.4f",
             self.fold,
             history.history["loss"][-1],
@@ -208,11 +214,11 @@ class Training(Pipeline):
             self.test_accuracy,
         )
 
-        mlflow.log_metric(
+        mlflow.log_metrics(
             {
                 "test_loss": self.test_loss,
                 "test_accuracy": self.test_accuracy,
-            }, run_id=self.mlflow_run_id
+            }, run_id=self.mlflow_fold_run_id,
         )
 
 
@@ -246,7 +252,7 @@ class Training(Pipeline):
     @card
     @step   
 
-    def transfom(self): #feature and target transformation for the entire dataset
+    def transform(self): #feature and target transformation for the entire dataset
 
         self.features_transformer=build_features_transformer()
         self.target_transformer=build_target_transformer()
@@ -261,7 +267,7 @@ class Training(Pipeline):
     @environment(vars=environment_variables)
     @step
 
-    def train(self,inputs):
+    def train(self):
         import mlflow
         
         self.logger.info("Training final model on entire dataset...")
@@ -282,6 +288,7 @@ class Training(Pipeline):
         self.next(self.register)
 
     @environment(vars=environment_variables)
+    @card
     @step
 
     def register(self,inputs):
@@ -324,7 +331,9 @@ class Training(Pipeline):
 
         self.next(self.end)
 
+    @card
     @step
+
     def end(self):
         self.logger.info("Pipeline finished.")
 

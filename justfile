@@ -30,3 +30,9 @@ ENDPOINT_NAME := env("ENDPOINT_NAME", "penguins")
 [group('setup')]
 @mlflow:
     uv run -- mlflow server --host 127.0.0.1 --port 5000
+
+[group('training')]
+@train:
+    PYTHONPATH=src uv run python -m pipelines.training --with retry run
+@cards:
+    PYTHONPATH=src uv run src/pipelines/training.py card server
