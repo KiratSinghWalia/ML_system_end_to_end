@@ -86,7 +86,7 @@ class Local(Backend):
             else "https://127.0.0.1.8080/invocation"
         )
 
-        self.database = "data/penguin.db"
+        self.database = "data/penguins.db"
 
         if config:
             self.database = config.get("database",self.database)
@@ -142,7 +142,7 @@ class Local(Backend):
             data["target"]=None
 
             if model_input is not None and len(model_input)>0:
-                data["prediction"] = [items['predictions'] for items in model_input]
+                data["prediction"] = [items['prediction'] for items in model_output]
                 data["confidence"] = [item["confidence"] for item in model_output]
 
             data['uuid'] = [str(uuid.uuid4()) for _ in range(len(data))]
@@ -219,8 +219,8 @@ class Local(Backend):
             self._exception("There was an error sending traffic to the endpoint.")
             return None
         
-        def deploy(self, model_uri: str, model_version: str) -> None:
-            pass
+    def deploy(self, model_uri: str, model_version: str) -> None:
+        pass
 
 
 class Mock(Backend):

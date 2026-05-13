@@ -18,3 +18,9 @@ mlflow.db
 mlartifacts
 .metaflow
 mlruns
+
+data/*
+!data/penguins.csv
+
+.pytest_cache
+main.py
