@@ -31,10 +31,10 @@ class Model(mlflow.pyfunc.PythonModel):
     def __init__(self):
         self.backend = None
 
-    def load_context(self, context :PythonModelContext | None) -> None:
+    def load_context(self, context : PythonModelContext | None) -> None:
         self._configure_logging()
         self._initialize_backend()
-        self._load_artifacs(context)
+        self._load_artifacts(context)
         self.logger.info("Model is ready to receive requests")
         #uses context to initialize the model
 
@@ -45,7 +45,7 @@ class Model(mlflow.pyfunc.PythonModel):
         #from model_input(abc->,xyz->) to [{abc:,xyz:}]
 
         if model_input.empty:
-            self.logging.warning("Received an empty request")
+            self.logger.warning("Received an empty request")
             return []
         
         self.logger.info(
@@ -123,9 +123,9 @@ class Model(mlflow.pyfunc.PythonModel):
                         else None
                     )
 
-                    module , cls = backend_class.rsplit(".",1)
-                    module = importlib.import_module(module)
-                    self.backend = getattr(module,cls)(config=backend_config)
+                module , cls = backend_class.rsplit(".",1)
+                module = importlib.import_module(module)
+                self.backend = getattr(module,cls)(config=backend_config)
 
             except Exception:
                 self.logger.exception(
